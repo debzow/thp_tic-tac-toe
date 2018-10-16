@@ -38,7 +38,6 @@ class BoardCase
   end
 
   def putcase(selected, currentshape, cases)
-    #puts "  " + currentshape + "  "
     cases[cases.keys[selected]] = "  " + currentshape + "  "
     return cases
   end
@@ -59,7 +58,7 @@ class Board
     end
   end
 
-  def printboard(cases, currentplayer, currentshape, selected)
+  def printboard(cases, currentplayer, currentshape, selected, score, players_names)
     cases_select = cases.dup
     cases_color = cases_select.dup
     cases_color.transform_values! {|v| v = shape_color(v)}
@@ -90,10 +89,17 @@ class Board
     puts " / /     / /  / /__  /_____/ / /    / /_/ / / /__  /_____/ / /    / /_/ //  __/".red
     puts "/_/     /_/   \\___/         /_/     \\__,_/  \\___/         /_/     \\____/ \\___/ \n\n".red
     puts "#{start_line}        C'est au tour de #{currentplayer} de jouer !\n".yellow
-    puts "#{start_line}                 > Forme : #{currentshape} < \n".blue
+    if currentshape == "X"
+      puts "#{start_line}                 #{"> Forme : ".blue}#{currentshape.cyan}#{" <".blue}\n\n"
+    elsif currentshape == "O"
+      puts "#{start_line}                 #{"> Forme : ".blue}#{currentshape.red}#{" <".blue}\n\n"
+    end
+    puts "   #{players_names[0].cyan} a #{score[0].to_s.red} points !".yellow
+    puts "                                                           #{players_names[1].cyan} a #{score[1].to_s.red} points !\n".yellow
     puts "#{space}\n#{space}\n#{line1}\n#{space}\n#{lines}\n#{space}\n#{space}\n#{line2}\n#{space}\n#{lines}\n#{space}\n#{space}\n#{line3}\n#{space}\n#{space}\n"
-    puts "\n#{start_line}#{"(Appuyez sur ENTREE pour confirmer votre choix)".yellowish}\n\n"
-    puts case_state
+    puts "\n#{start_line}#{"(Appuyez sur ENTREE pour confirmer votre choix)".yellowish}"
+    puts "#{start_line}             #{"([CTRL-C] = Quitter)".yellowish}\n\n"
+    print "#{case_state}\r"
   end
 
 end
@@ -102,11 +108,15 @@ end
 class Player
 
   def definition
-    print "\n\nComment s'appelle le joueur qui fera les croix ?\n> ".yellow
-    puts "Bienvenue à toi #{player1 = gets.chomp} !".green
-    print "\n\nComment s'appelle le joueur qui fera les ronds ?\n> ".yellow
-    puts "Bienvenue à toi #{player2 = gets.chomp} !".green
-    return [player1, player2]
+    begin
+      print "\n\nComment s'appelle le joueur qui fera les croix ?\n> ".yellow
+      puts "Bienvenue à toi #{player1 = gets.chomp} !".green
+      print "\n\nComment s'appelle le joueur qui fera les ronds ?\n> ".yellow
+      puts "Bienvenue à toi #{player2 = gets.chomp} !".green
+      return [player1, player2]
+    rescue Interrupt #Si l'utilisateur fait CTRL-C
+      puts "\n\nAu revoir !".green
+    end
   end
 end
 
@@ -119,18 +129,11 @@ class Game
 
   def initialize
     @players_names = PLAYER.definition
-    random = rand(0-2)
-    shapes = ["X", "O"]
-    @currentplayer = @players_names[random]
-    @currentshape = shapes[random]
-    @cases = {"h1" => "     ", "h2" => "     ", "h3" => "     ", "m1" => "     ", "m2" => "     ", "m3" => "     ", "b1" => "     ", "b2" => "     ", "b3" => "     "}
+    @score = [0, 0]
+    @shapes = ["X", "O"]
     @win_positions = [["h1", "h2", "h3"], ["m1", "m2", "m3"], ["b1", "b2", "b3"],
                       ["h1", "m1", "b1"], ["h2", "m2", "b2"], ["h3", "m3", "b3"],
                       ["h1", "m2", "b3"], ["b1", "m2", "h3"]]
-    @selected = 0
-    @count = 0
-    @currentselected = 0
-    @win = 0
   end
 
   def newturn_player(currentplayer, players_names)
@@ -152,49 +155,65 @@ class Game
     end
   end
 
-  def victory(win, count)
-    start_line = "                                      "
-    bottom_line = "                                                 _________________________"
+  def victory(win, count, score, cases, currentplayer, currentshape, currentselected, players_names)
+    start_line = "                "
+    bottom_line = "                           _________________________\n\n"
     if win == 1
-      puts "\n#{start_line}                 #{@players_names[0]} gagne !\n".upcase.yellow
+      score[0] += 1
+      BOARD.printboard(cases, currentplayer, currentshape, currentselected, score, players_names)
+      puts "#{start_line}                 #{players_names[0]} gagne !      \n".upcase.yellow
       puts bottom_line
     elsif win == 2
-      puts "\n#{start_line}                 #{@players_names[1]} gagne !\n".upcase.yellow
+      score[1] += 1
+      BOARD.printboard(cases, currentplayer, currentshape, currentselected, score, players_names)
+      puts "#{start_line}                 #{players_names[1]} gagne !      \n".upcase.yellow
       puts bottom_line
     elsif count == 9
-      puts "\n#{start_line}               C'est une égalité !\n".upcase.yellow
+      puts "#{start_line}               C'est une égalité !      \n".upcase.yellow
       puts bottom_line
-
     end
-    #if win == 1 || win == 2 || count >= 9
-
+    if win == 1 || win == 2 || count >= 9
+      puts "                            Souhaitez-vous rejouer ?\n".cyan
+      puts "                        #{"[ENTREE] = ".yellow} #{"Relancer une partie".red}"
+      puts "                              #{"[CTRL-C] = ".yellow} #{"Quitter".red}\n\n"
+      while 1
+        c = show_single_key
+        if c == "ENTER"
+          launch
+        end
+      end
+    end
   end
 
   def launch
-
+    random = rand(0-2)
+    currentplayer = @players_names[random]
+    currentshape = @shapes[random]
+    cases = {"h1" => "     ", "h2" => "     ", "h3" => "     ", "m1" => "     ", "m2" => "     ", "m3" => "     ", "b1" => "     ", "b2" => "     ", "b3" => "     "}
+    selected = 0
+    count = 0
+    currentselected = 0
     while 1
-      BOARD.printboard(@cases, @currentplayer, @currentshape, @currentselected)
+      BOARD.printboard(cases, currentplayer, currentshape, currentselected, @score, @players_names)
       while 1
-        @selected = BOARDCASE.selector(@currentselected, @currentshape)
-        if @selected == "ENTER"
-          if BOARDCASE.check_case(@currentselected, @cases) == "EMPTY"
-            @count += 1
-            puts @count
-            @cases = BOARDCASE.putcase(@currentselected, @currentshape, @cases)
-            @currentplayer = newturn_player(@currentplayer, @players_names)
-            @currentshape = newturn_shape(@currentshape)
-            BOARD.printboard(@cases, @currentplayer, @currentshape, @currentselected)
-            victory(checkwin(@cases, @win_positions), @count)
+        selected = BOARDCASE.selector(currentselected, currentshape)
+        if selected == "ENTER"
+          if BOARDCASE.check_case(currentselected, cases) == "EMPTY"
+            count += 1
+            puts count
+            cases = BOARDCASE.putcase(currentselected, currentshape, cases)
+            currentplayer = newturn_player(currentplayer, @players_names)
+            currentshape = newturn_shape(currentshape)
+            BOARD.printboard(cases, currentplayer, currentshape, currentselected, @score, @players_names)
+            victory(checkwin(cases, @win_positions), count, @score, cases, currentplayer, currentshape, currentselected, @players_names)
           end
         else
-          @currentselected = @selected
-          BOARD.printboard(@cases, @currentplayer, @currentshape, @currentselected)
+          currentselected = selected
+          BOARD.printboard(cases, currentplayer, currentshape, currentselected, @score, @players_names)
         end
       end
-
-      @currentplayer = newturn_player(@currentplayer, @players_names)
-      @currentshape = newturn_shape(@currentshape)
-      sleep(1)
+      currentplayer = newturn_player(currentplayer, @players_names)
+      currentshape = newturn_shape(currentshape)
     end
   end
 end
