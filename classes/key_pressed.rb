@@ -30,7 +30,7 @@ def show_single_key
   when "\e[D"
     return "LEFT"
   when "\u0003"
-    exit
+    return "CTRL-C"
   else
     return false
   end
