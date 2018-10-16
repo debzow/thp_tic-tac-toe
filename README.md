@@ -2,7 +2,7 @@
 
 
 ## :mag: The content
-In these exercises, I simply had to reproduce a **Tic-tac-toe *in the terminal***.
+In these exercises, I had to reproduce a **Tic-tac-toe *in the terminal***.
 * What is Tic-tac-toe ? https://en.wikipedia.org/wiki/Tic-tac-toe
 
 **After cloning the repository, make sure to do :**
